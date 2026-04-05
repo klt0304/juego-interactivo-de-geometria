@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mundo Geometría: Edición Arcade 🎮</title>
+    <style>
+        :root {
+            --bg-light: #5de0e6; --bg-dark: #48c9cf;
+            --yellow: #ffbc00; --blue: #1a73e8;
+            --green: #4cd137; --success: #e6f4ea; --error: #fce8e6;
+        }
+        body {
+            margin: 0; font-family: 'Segoe UI', sans-serif;
+            background: repeating-linear-gradient(90deg, var(--bg-light), var(--bg-light) 40px, var(--bg-dark) 40px, var(--bg-dark) 80px);
+            display: flex; align-items: center; justify-content: center; min-height: 100vh;
+            overflow: hidden;
+        }
+        .container { width: 95%; max-width: 850px; text-align: center; }
+        .screen { display: none; }
+        .active { display: block; animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .banner {
+            background: var(--yellow); padding: 25px 60px; border-radius: 25px;
+            box-shadow: 0 10px 0 #d48a00; color: white; font-size: 2.5em;
+            display: inline-block; transform: rotate(-2deg); margin-bottom: 30px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+        }
+        .monster { font-size: 8em; margin: 20px; animation: bounce 1.5s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-30px) scale(1.05); } }
+
+        .card {
+            background: white; border-radius: 30px; padding: 40px;
+            border: 8px solid var(--yellow); box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        .chat-container { 
+            background: #f1f3f4; border-radius: 50px; padding: 10px 25px; 
+            display: flex; align-items: center; border: 3px solid transparent;
+        }
+        .chat-container:focus-within { border-color: var(--blue); }
+        .chat-input {
+            flex: 1; border: none; background: transparent; padding: 15px;
+            font-size: 1.2em; outline: none;
+        }
+
+        .header-practice { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
+        .progress-bar { flex: 1; height: 12px; background: #e8eaed; border-radius: 6px; display: flex; overflow: hidden; }
+        .seg { flex: 1; border-right: 2px solid white; background: #e8eaed; }
+        .seg.filled { background: var(--blue); animation: fill 0.3s ease-in; }
+        @keyframes fill { from { width: 0; } }
+
+        .option-btn {
+            display: block; width: 100%; padding: 18px; margin: 12px 0;
+            border: 2px solid #dadce0; border-radius: 15px; background: white;
+            text-align: left; cursor: pointer; font-size: 1.1em; transition: 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .option-btn:hover { background: #f8f9fa; border-color: var(--blue); transform: translateX(5px); }
+        
+        .feedback { display: none; padding: 20px; border-radius: 15px; margin-top: 15px; text-align: left; font-weight: 500; }
+        .correct-box { background: var(--success); color: #137333; border: 2px solid #34a853; }
+        .wrong-box { background: var(--error); color: #a50e0e; border: 2px solid #d93025; }
+
+        .btn-main {
+            background: var(--green); color: white; padding: 15px 45px;
+            border-radius: 50px; border: none; font-size: 1.3em; font-weight: bold;
+            cursor: pointer; box-shadow: 0 8px 0 #44bd32; transition: 0.1s;
+        }
+        .btn-main:active { transform: translateY(4px); box-shadow: 0 4px 0 #44bd32; }
+        .btn-next { background: var(--blue); box-shadow: 0 6px 0 #1557b0; }
+        .loader { display: none; margin-top: 20px; font-weight: bold; color: var(--blue); }
+    </style>
+</head>
+<body>
+
+<audio id="sndCorrect" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3"></audio>
+<audio id="sndWrong" src="https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3"></audio>
+<audio id="sndClick" src="https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3"></audio>
+<audio id="sndWin" src="https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3"></audio>
+<audio id="sndLose" src="https://assets.mixkit.co/active_storage/sfx/1103/1103-preview.mp3"></audio>
+
+<audio id="bgMusic" loop src="https://assets.mixkit.co/active_storage/sfx/133/133-preview.mp3"></audio>
+
+<div class="container">
+    <div id="s1" class="screen active">
+        <div class="banner">SUPER GEOMETRÍA<br>ADVENTURE</div>
+        <div class="monster">👾</div>
+        <button class="btn-main" onclick="startGame()">¡START!</button>
+    </div>
+
+    <div id="s2" class="screen">
+        <div class="card">
+            <h2 style="color:var(--blue)">¿Qué nivel quieres crear?</h2>
+            <div class="chat-container">
+                <input type="text" id="peticion" class="chat-input" placeholder="Ej: Polígonos para primaria...">
+                <button class="btn-main" style="margin:0; padding:10px 30px; font-size:1em;" onclick="llamarGemini()">GENERAR</button>
+            </div>
+            <div id="loader" class="loader">⚙️ Construyendo nivel arcade...</div>
+        </div>
+    </div>
+
+    <div id="s3" class="screen">
+        <div class="card" style="border:none; text-align:left; padding: 30px;">
+            <div class="header-practice">
+                <span id="progText" style="font-weight:bold; color:var(--blue);">Nivel 1/5</span>
+                <div class="progress-bar" id="pBar"></div>
+            </div>
+            <h2 id="qText" style="font-weight:600; font-size:1.5em; color:#333;"></h2>
+            <div id="opts"></div>
+            <div id="fb" class="feedback">
+                <strong id="fbTitle"></strong><br><span id="fbBody"></span>
+            </div>
+            <div style="margin-top:40px; display:flex; justify-content:space-between; align-items:center;">
+                <button onclick="stopGame(); nav('s1')" style="background:none; border:none; color:#999; cursor:pointer;">Salir</button>
+                <button class="btn-main btn-next" id="btnNext" onclick="nextQ()">Siguiente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_KEY = "AIzaSyDIAbDCGhfnXGqePlA3rh1X0HesQDMoY2I"; 
+    let data = [], cur = 0, answered = false, mistakes = 0;
+
+    function playSnd(id) {
+        const s = document.getElementById(id);
+        s.currentTime = 0;
+        s.play();
+    }
+
+    function startGame() {
+        const music = document.getElementById('bgMusic');
+        music.volume = 0.2; 
+        music.play();
+        playSnd('sndClick');
+        nav('s2');
+    }
+
+    function stopGame() {
+        const music = document.getElementById('bgMusic');
+        music.pause();
+        music.currentTime = 0;
+    }
+
+    function nav(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    async function llamarGemini() {
+        playSnd('sndClick');
+        const prompt = document.getElementById('peticion').value;
+        if(!prompt) return;
+        document.getElementById('loader').style.display = 'block';
+        
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        try {
+            const resp = await fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: `Genera 5 preguntas de geometría: ${prompt}. Solo JSON: [{"pregunta":"","opciones":["","",""],"correcta":0,"explicacion":""}]` }] }]
+                }) 
+            });
+            const json = await resp.json();
+            let texto = json.candidates[0].content.parts[0].text;
+            texto = texto.replace(/```json/g, "").replace(/```/g, "").trim();
+            data = JSON.parse(texto);
+            mistakes = 0;
+            iniciarEscena();
+        } catch(e) {
+            data = [{ pregunta: "¿90 grados es un ángulo...?", opciones: ["Recto", "Agudo"], correcta: 0, explicacion: "Correcto, es recto." }];
+            iniciarEscena();
+        } finally {
+            document.getElementById('loader').style.display = 'none';
+        }
+    }
+
+    function iniciarEscena() {
+        cur = 0;
+        initBar();
+        nav('s3');
+        render();
+    }
+
+    function initBar() {
+        const bar = document.getElementById('pBar');
+        bar.innerHTML = "";
+        data.forEach(() => { 
+            let s = document.createElement('div'); 
+            s.className="seg"; 
+            bar.appendChild(s); 
+        });
+    }
+
+    function render() {
+        answered = false;
+        const p = data[cur];
+        document.getElementById('progText').innerText = `Nivel ${cur+1}/${data.length}`;
+        document.getElementById('qText').innerText = p.pregunta;
+        document.getElementById('fb').style.display = 'none';
+        
+        const container = document.getElementById('opts');
+        container.innerHTML = "";
+        p.opciones.forEach((o, i) => {
+            const b = document.createElement('button');
+            b.className = "option-btn";
+            b.innerHTML = `<strong>${String.fromCharCode(65+i)}.</strong> ${o}`;
+            b.onclick = () => check(i, b);
+            container.appendChild(b);
+        });
+        
+        document.querySelectorAll('.seg').forEach((s, i) => {
+            i <= cur ? s.classList.add('filled') : s.classList.remove('filled');
+        });
+    }
+
+    function check(i, btn) {
+        if(answered) return;
+        answered = true;
+        const p = data[cur];
+        const fb = document.getElementById('fb');
+        
+        if(i === p.correcta) {
+            playSnd('sndCorrect');
+            btn.style.background = "#e6f4ea";
+            btn.style.borderColor = "#34a853";
+            fb.className = "feedback correct-box";
+            document.getElementById('fbTitle').innerText = "⭐ ¡GENIAL! ⭐";
+        } else {
+            playSnd('sndWrong');
+            mistakes++;
+            btn.style.background = "#fce8e6";
+            btn.style.borderColor = "#d93025";
+            fb.className = "feedback wrong-box";
+            document.getElementById('fbTitle').innerText = "💥 ¡UPS! 💥";
+        }
+        document.getElementById('fbBody').innerText = p.explicacion;
+        fb.style.display = 'block';
+    }
+
+    function nextQ() {
+        playSnd('sndClick');
+        if(!answered) return;
+        if(cur < data.length - 1) { 
+            cur++; 
+            render(); 
+        } else { 
+            stopGame();
+            if(mistakes > 2) {
+                playSnd('sndLose');
+                alert("GAME OVER - Inténtalo de nuevo para mejorar tu puntaje.");
+            } else {
+                playSnd('sndWin');
+                alert("¡VICTORIA REAL! Has dominado este nivel.");
+            }
+            nav('s1'); 
+        }
+    }
+</script>
+</body>
+</html>
